@@ -11,11 +11,58 @@ NC='\033[0m' # No Color
 # HELPER FUNCTIONS
 # ==========================================
 
-check_sudo() {
-    if [ "$EUID" -ne 0 ]; then
-        echo -e "${RED}Please run this script with sudo or as root.${NC}"
+# PRE-CHECKS
+run_prechecks() {
+    echo -e "${CYAN}=== Running System Pre-checks ===${NC}"
+    local HAS_ERROR=0
+
+    # 1. Root / Sudo Check
+    if [ "$EUID" -eq 0 ]; then
+        echo -e "${GREEN}[OK] Running with root privileges.${NC}"
+    else
+        echo -e "${RED}[FAIL] This script must be run with sudo or as root.${NC}"
+        HAS_ERROR=1
+    fi
+
+    # 2. OS Check (Ensure it's Fedora)
+    if [ -f /etc/os-release ]; then
+        # Source the os-release file to get variables like $ID and $NAME
+        . /etc/os-release
+        if [ "$ID" = "fedora" ]; then
+            echo -e "${GREEN}[OK] OS detected: $NAME ($VERSION).${NC}"
+        else
+            echo -e "${RED}[FAIL] OS mismatch. This script is intended for Fedora, but detected $NAME.${NC}"
+            HAS_ERROR=1
+        fi
+    else
+        echo -e "${RED}[FAIL] Cannot determine OS. /etc/os-release is missing.${NC}"
+        HAS_ERROR=1
+    fi
+
+    # 3. Network Connection Check (Ping Cloudflare's 1.1.1.1)
+    if ping -c 1 -W 2 1.1.1.1 &> /dev/null; then
+        echo -e "${GREEN}[OK] Internet connection verified.${NC}"
+    else
+        echo -e "${RED}[FAIL] No internet connection detected. A network connection is required.${NC}"
+        HAS_ERROR=1
+    fi
+
+    # 4. Package Manager Check
+    if command -v dnf &> /dev/null; then
+        echo -e "${GREEN}[OK] DNF package manager found.${NC}"
+    else
+        echo -e "${RED}[FAIL] DNF not found!${NC}"
+        HAS_ERROR=1
+    fi
+
+    # Halt script if any checks failed
+    if [ $HAS_ERROR -eq 1 ]; then
+        echo -e "${YELLOW}Pre-checks failed. Aborting script to prevent system damage.${NC}"
         exit 1
     fi
+
+    echo -e "${GREEN}All pre-checks passed!${NC}"
+    sleep 1
 }
 
 pause() {
@@ -570,7 +617,8 @@ show_menu() {
 }
 
 main() {
-    check_sudo
+    # Run all system checks before allowing the script to proceed
+    run_prechecks
     
     while true; do
         show_menu
