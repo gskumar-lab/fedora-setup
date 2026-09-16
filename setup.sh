@@ -185,25 +185,145 @@ install_groups() {
 
 install_core_tools() {
 	echo -e "${CYAN}=== Installing Core System Tools ===${NC}"
+
     if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
-        # TODO: Define and install CLI utilities
-        echo "Core tools installed."
+        # Define the array of core packages
+        local core_pkgs=(
+            # Networking & Downloading
+            curl
+            wget
+
+            # Version Control & Dotfile Management
+            git
+            stow       # Highly recommended for managing dotfiles symlinks
+
+            # Archives & Data
+            zip
+            unzip
+            tar
+            jq         # Command-line JSON processor
+
+            # System Monitoring & Fetch
+            btop       # Modern replacement for htop
+            fastfetch  # Modern replacement for neofetch
+
+            # Modern CLI Utilities (Rust rewrites)
+            eza        # Modern replacement for ls
+            bat        # Modern replacement for cat
+            fzf        # Command-line fuzzy finder
+            zoxide     # Smarter cd command
+            ripgrep    # Faster grep
+            fd-find    # Faster find
+
+            # Text Editors
+            neovim
+        )
+
+        echo -e "${YELLOW}Installing core packages...${NC}"
+
+        # Pass the entire array to dnf so it resolves dependencies in one go
+        if dnf install -y "${core_pkgs[@]}"; then
+            echo -e "${GREEN}Core tools installed successfully.${NC}"
+        else
+            echo -e "${RED}Error: Failed to install some core tools. Please check the output above.${NC}"
+        fi
+    else
+        echo "Skipping core system tools."
     fi
 }
 
 install_gpu() {
 	echo -e "${CYAN}=== Installing Graphics Drivers ===${NC}"
-    ask "Install AMD Drivers (Mesa/Vulkan)?" "N" && echo "Installing AMD..."
-    ask "Install NVIDIA Drivers (Proprietary)?" "N" && echo "Installing NVIDIA..."
-    ask "Install Intel Drivers?" "N" && echo "Installing Intel..."
-    # TODO: Add actual DNF commands above
+
+    # AMD
+    if ask "Install AMD Drivers (Mesa/Vulkan/VAAPI)?" "N"; then
+        echo -e "${YELLOW}Installing AMD packages...${NC}"
+        # mesa-va-drivers is for hardware video acceleration, mesa-vulkan-drivers for gaming/Wayland
+        if dnf install -y mesa-dri-drivers mesa-vulkan-drivers mesa-va-drivers mesa-vdpau-drivers rocm-opencl; then
+            echo -e "${GREEN}AMD drivers installed successfully.${NC}"
+        else
+            echo -e "${RED}Error installing AMD drivers.${NC}"
+        fi
+    fi
+
+    # NVIDIA
+    if ask "Install NVIDIA Drivers (Proprietary)? Requires RPM Fusion." "N"; then
+        echo -e "${YELLOW}Installing NVIDIA packages...${NC}"
+        # akmod-nvidia builds the kernel module automatically
+        if dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda; then
+            echo -e "${GREEN}NVIDIA drivers installed successfully.${NC}"
+            echo -e "${YELLOW}WARNING: You may need to wait a few minutes before rebooting so 'akmods' can build the kernel module in the background.${NC}"
+            echo -e "${YELLOW}NOTE: For Hyprland, ensure 'nvidia-drm.modeset=1' is in your kernel parameters.${NC}"
+        else
+            echo -e "${RED}Error installing NVIDIA drivers.${NC}"
+        fi
+    fi
+
+    # INTEL
+    if ask "Install Intel Drivers (Mesa/Vulkan/Media)?" "N"; then
+        echo -e "${YELLOW}Installing Intel packages...${NC}"
+        # intel-media-driver is for Broadwell (Gen8) and newer hardware acceleration
+        # libva-intel-driver is a fallback for older Intel hardware
+        if dnf install -y mesa-dri-drivers mesa-vulkan-drivers intel-media-driver libva-intel-driver; then
+            echo -e "${GREEN}Intel drivers installed successfully.${NC}"
+        else
+            echo -e "${RED}Error installing Intel drivers.${NC}"
+        fi
+    fi
 }
 
 install_apps() {
 	echo -e "${CYAN}=== Installing Apps ===${NC}"
-    ask "Install GUI Apps via DNF?" "Y" && echo "Installing DNF apps..."
-    ask "Install GUI Apps via Flatpak?" "Y" && echo "Installing Flatpak apps..."
-    # TODO: Add actual app arrays and install loops
+
+    # ---------------------------------------------------------
+    # EDIT THESE ARRAYS TO ADD/REMOVE YOUR PREFERRED APPS
+    # ---------------------------------------------------------
+    local dnf_apps=(
+        firefox
+        kitty                  # Terminal emulator
+        thunar                 # File manager
+        thunar-volman
+        thunar-archive-plugin
+        pavucontrol            # GUI audio control
+        mpv                    # Video player
+        eog                    # Image viewer
+        polkit-gnome           # GUI authentication agent
+    )
+
+    local flatpak_apps=(
+        com.spotify.Client
+        com.discordapp.Discord
+        md.obsidian.Obsidian
+        # org.gimp.GIMP
+    )
+    # ---------------------------------------------------------
+
+    if ask "Install GUI Apps via DNF?" "Y"; then
+        echo -e "${YELLOW}Installing DNF apps...${NC}"
+        dnf install -y "${dnf_apps[@]}"
+        echo -e "${GREEN}DNF apps installed successfully.${NC}"
+    else
+        echo "Skipping DNF apps."
+    fi
+
+    if ask "Install GUI Apps via Flatpak?" "Y"; then
+
+        # Failsafe: Ensure flatpak command exists just in case they skipped the Flatpak setup step earlier
+        if ! command -v flatpak &> /dev/null; then
+            echo -e "${RED}Flatpak is not installed. Attempting to install it now...${NC}"
+	    # Call setup_flatpak. If it returns 1 (user says no), abort app install.
+            setup_flatpak || {
+                echo -e "${RED}Flatpak setup was aborted. Cannot install Flatpak apps.${NC}"
+                return
+            }
+        fi
+
+        echo -e "${YELLOW}Installing Flatpak apps...${NC}"
+	flatpak install -y flathub "${flatpak_apps[@]}"
+        echo -e "${GREEN}Flatpak apps installed successfully.${NC}"
+    else
+        echo "Skipping Flatpak apps."
+    fi
 }
 
 install_hyprland() {
