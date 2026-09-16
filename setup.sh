@@ -23,74 +23,131 @@ pause() {
     read -p "Press [Enter] to return to the menu..."
 }
 
+# The ask function takes a question and a default answer (Y or N)
+ask() {
+    local prompt default reply
+    if [ "${2:-}" = "Y" ]; then
+        prompt="Y/n"
+        default=Y
+    elif [ "${2:-}" = "N" ]; then
+        prompt="y/N"
+        default=N
+    else
+        prompt="y/n"
+        default=
+    fi
+
+    while true; do
+        echo -en "${YELLOW}$1 [$prompt] ${NC}"
+        read -r reply
+        # Default behavior on empty input
+        if [ -z "$reply" ]; then
+            reply=$default
+        fi
+        # Check answer
+        case "$reply" in
+            Y*|y*) return 0 ;;
+            N*|n*) return 1 ;;
+        esac
+    done
+}
+
 # ==========================================
 # INSTALLATION FUNCTIONS
 # ==========================================
 
 change_dns() {
-    echo -e "${CYAN}=== Changing DNS ===${NC}"
-    # TODO: Modify systemd-resolved or NetworkManager settings
-    echo "DNS configured successfully."
+	echo -e "${CYAN}=== Changing DNS ===${NC}"
+    if ask "Configure custom DNS (e.g., Cloudflare/Quad9)?" "Y"; then
+        # TODO: DNS Logic here
+        echo "DNS configured."
+    else
+        echo "Skipping DNS."
+    fi
 }
 
 add_repos() {
-    echo -e "${CYAN}=== Adding Repositories ===${NC}"
-    # TODO: Install RPM Fusion (free/nonfree) and Terra repo
-    echo "Repositories added successfully."
+	echo -e "${CYAN}=== Adding Repositories ===${NC}"
+    ask "Add RPM Fusion (Free & Non-Free)?" "Y" && {
+        # TODO: RPM fusion logic
+        echo "RPM Fusion added."
+    }
+    ask "Add Terra Repository?" "Y" && {
+        # TODO: Terra logic
+        echo "Terra added."
+    }
 }
 
 setup_flatpak() {
-    echo -e "${CYAN}=== Setting up Flatpak ===${NC}"
-    # TODO: Install flatpak, add flathub remote
-    echo "Flatpak setup complete."
+	echo -e "${CYAN}=== Setting up Flatpak ===${NC}"
+    ask "Install Flatpak and add Flathub remote?" "Y" && {
+        # TODO: Flatpak logic
+        echo "Flatpak setup complete."
+    }
 }
 
 install_groups() {
-    echo -e "${CYAN}=== Installing Package Groups ===${NC}"
-    # TODO: dnf groupinstall standard, networkmanager-submodules, hardware-support, multimedia, development
-    echo "Package groups installed."
+	echo -e "${CYAN}=== Installing Package Groups ===${NC}"
+    ask "Install 'Standard' group?" "Y" && echo "Installing Standard..."
+    ask "Install 'NetworkManager Submodules'?" "Y" && echo "Installing NM Submodules..."
+    ask "Install 'Hardware Support'?" "Y" && echo "Installing Hardware Support..."
+    ask "Install 'Multimedia'?" "Y" && echo "Installing Multimedia..."
+    ask "Install 'Development Tools'?" "Y" && echo "Installing Development Tools..."
+    # TODO: Add actual dnf groupinstall commands above
 }
 
 install_core_tools() {
-    echo -e "${CYAN}=== Installing Core System Tools ===${NC}"
-    # TODO: Define and install CLI utilities (wget, git, curl, etc.)
-    echo "Core tools installed."
+	echo -e "${CYAN}=== Installing Core System Tools ===${NC}"
+    if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
+        # TODO: Define and install CLI utilities
+        echo "Core tools installed."
+    fi
 }
 
 install_gpu() {
-    echo -e "${CYAN}=== Installing Graphics Drivers ===${NC}"
-    # TODO: Detect GPU (AMD/Intel/NVIDIA) and install specific packages
-    echo "Graphics drivers installed."
+	echo -e "${CYAN}=== Installing Graphics Drivers ===${NC}"
+    ask "Install AMD Drivers (Mesa/Vulkan)?" "N" && echo "Installing AMD..."
+    ask "Install NVIDIA Drivers (Proprietary)?" "N" && echo "Installing NVIDIA..."
+    ask "Install Intel Drivers?" "N" && echo "Installing Intel..."
+    # TODO: Add actual DNF commands above
 }
 
 install_apps() {
-    echo -e "${CYAN}=== Installing Apps ===${NC}"
-    # TODO: Install DNF and Flatpak GUI applications
-    echo "Apps installed."
+	echo -e "${CYAN}=== Installing Apps ===${NC}"
+    ask "Install GUI Apps via DNF?" "Y" && echo "Installing DNF apps..."
+    ask "Install GUI Apps via Flatpak?" "Y" && echo "Installing Flatpak apps..."
+    # TODO: Add actual app arrays and install loops
 }
 
 install_hyprland() {
-    echo -e "${CYAN}=== Installing Hyprland ===${NC}"
-    # TODO: Install Hyprland and Wayland ecosystem (Waybar, Wofi, etc.)
-    echo "Hyprland setup complete."
+	echo -e "${CYAN}=== Installing Hyprland ===${NC}"
+    if ask "Install Hyprland and Wayland ecosystem?" "Y"; then
+        # TODO: Hyprland logic
+        echo "Hyprland setup complete."
+    fi
 }
 
 install_noctalia() {
-    echo -e "${CYAN}=== Installing Noctalia ===${NC}"
-    # TODO: Clone Noctalia repo and apply themes/configs
-    echo "Noctalia installed."
+	echo -e "${CYAN}=== Installing Noctalia ===${NC}"
+    if ask "Install and apply Noctalia theme?" "Y"; then
+        # TODO: Noctalia clone/apply logic
+        echo "Noctalia installed."
+    fi
 }
 
 setup_dotfiles() {
-    echo -e "${CYAN}=== Copying Dotfiles ===${NC}"
-    # TODO: Clone user dotfiles and symlink to ~/.config
-    echo "Dotfiles copied successfully."
+	echo -e "${CYAN}=== Copying Dotfiles ===${NC}"
+    if ask "Clone and deploy your dotfiles?" "Y"; then
+        # TODO: Git clone and stow/cp logic
+        echo "Dotfiles copied successfully."
+    fi
 }
 
 setup_shell() {
-    echo -e "${CYAN}=== Setting up Bash & Starship ===${NC}"
-    # TODO: Install Starship, append to .bashrc
-    echo "Bash and Starship configured."
+	echo -e "${CYAN}=== Setting up Bash & Starship ===${NC}"
+    ask "Install Starship prompt?" "Y" && echo "Installing Starship..."
+    ask "Apply custom .bashrc configurations?" "Y" && echo "Configuring .bashrc..."
+    # TODO: Shell logic
 }
 
 # ==========================================
@@ -99,17 +156,19 @@ setup_shell() {
 
 full_setup() {
     echo -e "${YELLOW}Starting Full System Setup...${NC}"
-    change_dns
-    add_repos
-    setup_flatpak
-    install_groups
-    install_core_tools
-    install_gpu
-    install_apps
-    install_hyprland
-    install_noctalia
-    setup_dotfiles
-    setup_shell
+    
+    ask "Step 1: Change DNS?" "Y" && change_dns
+    ask "Step 2: Add Repositories?" "Y" && add_repos
+    ask "Step 3: Setup Flatpak?" "Y" && setup_flatpak
+    ask "Step 4: Install Package Groups?" "Y" && install_groups
+    ask "Step 5: Install Core System Tools?" "Y" && install_core_tools
+    ask "Step 6: Install Graphics Drivers?" "Y" && install_gpu
+    ask "Step 7: Install Apps?" "Y" && install_apps
+    ask "Step 8: Install Hyprland?" "Y" && install_hyprland
+    ask "Step 9: Install Noctalia?" "Y" && install_noctalia
+    ask "Step 10: Copy Dotfiles?" "Y" && setup_dotfiles
+    ask "Step 11: Setup Bash & Starship?" "Y" && setup_shell
+
     echo -e "${GREEN}=== Full Setup Complete! Please Reboot. ===${NC}"
 }
 
@@ -122,7 +181,7 @@ show_menu() {
     echo -e "${GREEN}=======================================${NC}"
     echo -e "${GREEN}    Fedora Minimal Post-Install        ${NC}"
     echo -e "${GREEN}=======================================${NC}"
-    echo "1. Full Setup (ALL)"
+    echo "1. Full Setup (Interactive)"
     echo "2. Change DNS"
     echo "3. Add Repos (RPM Fusion, Terra)"
     echo "4. Setup Flatpak & Flathub"
