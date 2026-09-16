@@ -58,9 +58,39 @@ ask() {
 
 change_dns() {
 	echo -e "${CYAN}=== Changing DNS ===${NC}"
-    if ask "Configure custom DNS (e.g., Cloudflare/Quad9)?" "Y"; then
-        # TODO: DNS Logic here
-        echo "DNS configured."
+    if ask "Configure custom global DNS (e.g., Cloudflare/Quad9)?" "Y"; then
+        echo -e "\n${YELLOW}Select DNS Provider:${NC}"
+        echo "1. Cloudflare (1.1.1.1, 1.0.0.1) [Fast & Private]"
+        echo "2. Quad9 (9.9.9.9, 149.112.112.112) [Malware Blocking]"
+        echo "3. Google (8.8.8.8, 8.8.4.4)"
+        echo "4. Custom (Enter your own)"
+        read -p "Enter choice [1-4]: " dns_choice
+
+        case $dns_choice in
+            1) DNS_SERVERS="1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001" ;;
+            2) DNS_SERVERS="9.9.9.9 149.112.112.112 2620:fe::fe 2620:fe::9" ;;
+            3) DNS_SERVERS="8.8.8.8 8.8.4.4 2001:4860:4860::8888 2001:4860:4860::8844" ;;
+            4) read -p "Enter DNS IP addresses (space separated): " DNS_SERVERS ;;
+            *) echo -e "${RED}Invalid choice. Skipping DNS setup.${NC}"; return ;;
+        esac
+
+        echo -e "${YELLOW}Applying DNS settings to systemd-resolved...${NC}"
+
+        # Create a drop-in directory so updates don't overwrite our custom config
+        mkdir -p /etc/systemd/resolved.conf.d
+
+        # Write the configuration with Opportunistic DNS over TLS enabled
+        cat <<EOF > /etc/systemd/resolved.conf.d/custom-dns.conf
+[Resolve]
+DNS=$DNS_SERVERS
+DNSOverTLS=opportunistic
+EOF
+
+        # Restart the daemon to apply changes immediately
+        systemctl restart systemd-resolved
+
+        echo -e "${GREEN}DNS configured successfully! Current active servers:${NC}"
+        resolvectl status | grep -E "DNS Servers" -A 2
     else
         echo "Skipping DNS."
     fi
@@ -68,32 +98,89 @@ change_dns() {
 
 add_repos() {
 	echo -e "${CYAN}=== Adding Repositories ===${NC}"
-    ask "Add RPM Fusion (Free & Non-Free)?" "Y" && {
-        # TODO: RPM fusion logic
-        echo "RPM Fusion added."
-    }
-    ask "Add Terra Repository?" "Y" && {
-        # TODO: Terra logic
-        echo "Terra added."
-    }
+
+    if ask "Add RPM Fusion (Free & Non-Free)?" "Y"; then
+        echo -e "${YELLOW}Installing RPM Fusion repositories...${NC}"
+        dnf install -y \
+            https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+            https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+
+        # Pulls in necessary AppStream metadata for the new repos
+        dnf groupupdate core -y
+        echo -e "${GREEN}RPM Fusion added successfully.${NC}"
+    else
+        echo "Skipping RPM Fusion."
+    fi
+
+    if ask "Add Terra Repository?" "Y"; then
+        echo -e "${YELLOW}Adding Terra repository...${NC}"
+
+	sudo dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release -y
+
+        # The safest way across both DNF4 (F40) and DNF5 (F41+) is dropping the .repo file directly
+        #curl -sLo /etc/yum.repos.d/terra.repo https://terra.fyralabs.com/terra.repo
+
+        # Import the GPG key for Terra to prevent confirmation prompts later
+        #rpm --import https://terra.fyralabs.com/key.pub
+        
+	echo -e "${GREEN}Terra repository added successfully.${NC}"
+    else
+        echo "Skipping Terra."
+    fi
+
+    # Refresh DNF cache so subsequent script steps can access the new packages
+    echo -e "${YELLOW}Refreshing DNF cache...${NC}"
+    dnf makecache
 }
 
 setup_flatpak() {
 	echo -e "${CYAN}=== Setting up Flatpak ===${NC}"
-    ask "Install Flatpak and add Flathub remote?" "Y" && {
-        # TODO: Flatpak logic
-        echo "Flatpak setup complete."
-    }
+    if ask "Install Flatpak and add Flathub remote?" "Y"; then
+        echo -e "${YELLOW}Installing Flatpak...${NC}"
+        dnf install -y flatpak
+
+        echo -e "${YELLOW}Adding Flathub repository...${NC}"
+        # --if-not-exists prevents the command from failing if Flathub is already configured
+        flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+        echo -e "${GREEN}Flatpak setup complete.${NC}"
+    else
+        echo "Skipping Flatpak setup."
+    fi
 }
 
 install_groups() {
-	echo -e "${CYAN}=== Installing Package Groups ===${NC}"
-    ask "Install 'Standard' group?" "Y" && echo "Installing Standard..."
-    ask "Install 'NetworkManager Submodules'?" "Y" && echo "Installing NM Submodules..."
-    ask "Install 'Hardware Support'?" "Y" && echo "Installing Hardware Support..."
-    ask "Install 'Multimedia'?" "Y" && echo "Installing Multimedia..."
-    ask "Install 'Development Tools'?" "Y" && echo "Installing Development Tools..."
-    # TODO: Add actual dnf groupinstall commands above
+    echo -e "${CYAN}=== Installing Package Groups ===${NC}"
+
+    if ask "Install 'Standard' group?" "Y"; then
+        echo -e "${YELLOW}Installing Standard group...${NC}"
+        dnf group install -y "standard"
+    fi
+
+    if ask "Install 'NetworkManager Submodules'?" "Y"; then
+        echo -e "${YELLOW}Installing NetworkManager Submodules...${NC}"
+        # This provides VPN plugins (OpenVPN, WireGuard, etc.) and specific network protocols
+        dnf group install -y "networkmanager-submodules"
+    fi
+
+    if ask "Install 'Hardware Support'?" "Y"; then
+        echo -e "${YELLOW}Installing Hardware Support...${NC}"
+        # Brings in necessary firmware, smartcard readers, and generic hardware tools
+        dnf group install -y "hardware-support"
+    fi
+
+    if ask "Install 'Multimedia'?" "Y"; then
+        echo -e "${YELLOW}Installing Multimedia...${NC}"
+        # Since you added RPM Fusion earlier, this will automatically pull in
+        # non-free codecs, gstreamer plugins, and hardware acceleration packages
+        dnf group install -y "multimedia"
+    fi
+
+    if ask "Install 'Development Tools'?" "Y"; then
+        echo -e "${YELLOW}Installing Development Tools...${NC}"
+        # Pulls in gcc, make, automake, git, and compiling dependencies
+        dnf group install -y "d-development"
+    fi
 }
 
 install_core_tools() {
