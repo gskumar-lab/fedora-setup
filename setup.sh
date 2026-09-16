@@ -328,17 +328,71 @@ install_apps() {
 
 install_hyprland() {
 	echo -e "${CYAN}=== Installing Hyprland ===${NC}"
-    if ask "Install Hyprland and Wayland ecosystem?" "Y"; then
-        # TODO: Hyprland logic
-        echo "Hyprland setup complete."
+
+	if ask "Install core Hyprland compositor and XDG portals?" "Y"; then
+        echo "Installing core Hyprland..."
+        # xdg-desktop-portal-gtk is needed as a fallback for apps that don't support the hyprland portal
+        dnf install -y hyprland xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     fi
+
+    if ask "Install Wayland utilities (clipboard, screenshots, QT-Wayland support)?" "Y"; then
+        echo "Installing Wayland utilities..."
+        # wl-clipboard: copy/paste support
+        # grim & slurp: screenshot capabilities
+        # qt5/6-qtwayland: ensures QT apps run natively in Wayland instead of XWayland
+        dnf install -y wl-clipboard grim slurp qt5-qtwayland qt6-qtwayland
+    fi
+
+    if ask "Install desktop components (Waybar, Rofi, Kitty, Hyprpaper/lock/idle, Dunst)?" "Y"; then
+        echo "Installing desktop components..."
+        # Kitty is Hyprland's default terminal for its auto-generated config
+        # We use rofi-wayland specifically for native Wayland support
+        dnf install -y waybar rofi-wayland kitty hyprpaper hyprlock hypridle dunst
+    fi
+
+    if ask "Install system controls (audio, brightness, polkit)?" "Y"; then
+        echo "Installing system controls..."
+        # pamixer & pavucontrol: audio management
+        # brightnessctl: screen brightness management
+        # polkit-gnome: GUI prompt for sudo/admin password requests in GUI apps
+        dnf install -y pamixer brightnessctl pavucontrol polkit-gnome
+    fi
+
+    if ask "Install and enable SDDM (Display Manager / Login Screen)?" "N"; then
+        echo "Installing SDDM..."
+        dnf install -y sddm
+        # Enable it to start automatically on boot
+        systemctl enable sddm.service
+    else
+        echo -e "${YELLOW}Skipping SDDM. You will need to log in via TTY and type 'Hyprland' to start your session.${NC}"
+    fi
+
+    echo -e "${GREEN}Hyprland setup complete.${NC}"
 }
 
 install_noctalia() {
 	echo -e "${CYAN}=== Installing Noctalia ===${NC}"
-    if ask "Install and apply Noctalia theme?" "Y"; then
-        # TODO: Noctalia clone/apply logic
-        echo "Noctalia installed."
+
+	if ask "Install Noctalia (Unified Wayland Desktop Shell)?" "Y"; then
+            sudo dnf install -y noctalia
+
+        if ask "Apply default Noctalia configuration?" "Y"; then
+            echo "Setting up configuration in ~/.config/noctalia..."
+            mkdir -p ~/.config/noctalia
+
+            # Noctalia provides an example.toml that acts as the starting point
+            # for all the modules (bar, launcher, notifications, etc.)
+            if [ -f ~/.local/src/noctalia/example.toml ]; then
+                cp ~/.local/src/noctalia/example.toml ~/.config/noctalia/config.toml
+                echo "Default Noctalia config applied."
+            else
+                echo -e "${YELLOW}Warning: example.toml not found. You may need to create config.toml manually.${NC}"
+            fi
+        fi
+
+        echo -e "${GREEN}Noctalia setup complete.${NC}"
+    else
+        echo "Skipping Noctalia installation."
     fi
 }
 
