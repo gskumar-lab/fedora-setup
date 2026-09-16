@@ -398,17 +398,126 @@ install_noctalia() {
 
 setup_dotfiles() {
 	echo -e "${CYAN}=== Copying Dotfiles ===${NC}"
-    if ask "Clone and deploy your dotfiles?" "Y"; then
-        # TODO: Git clone and stow/cp logic
-        echo "Dotfiles copied successfully."
+
+	if ask "Clone and deploy your dotfiles?" "Y"; then
+
+        # 1. Identify the real user (since the script runs as root)
+        local REAL_USER=${SUDO_USER:-$(whoami)}
+        local REAL_HOME=$(eval echo ~$REAL_USER)
+
+        # 2. Define repository URL (You can hardcode your repo here)
+        local DEFAULT_REPO=""
+        local REPO_URL
+
+        read -p "Enter your dotfiles Git repo URL [${DEFAULT_REPO}]: " REPO_URL
+        REPO_URL=${REPO_URL:-$DEFAULT_REPO}
+
+        if [ -z "$REPO_URL" ]; then
+            echo -e "${RED}No URL provided. Skipping dotfiles.${NC}"
+            return
+        fi
+
+        local DOTFILES_DIR="${REAL_HOME}/dotfiles"
+
+        # 3. Ensure git and stow are installed
+        if ! command -v git &> /dev/null || ! command -v stow &> /dev/null; then
+            echo -e "${YELLOW}Installing git and GNU stow...${NC}"
+            dnf install -y git stow
+        fi
+
+        # 4. Clone the repository
+        if [ -d "$DOTFILES_DIR" ]; then
+            echo -e "${YELLOW}Directory $DOTFILES_DIR already exists.${NC}"
+            if ask "Remove existing directory and re-clone?" "N"; then
+                rm -rf "$DOTFILES_DIR"
+                sudo -u "$REAL_USER" git clone "$REPO_URL" "$DOTFILES_DIR"
+            else
+                echo "Using existing repository. Pulling latest changes..."
+                sudo -u "$REAL_USER" bash -c "cd $DOTFILES_DIR && git pull"
+            fi
+        else
+            echo "Cloning dotfiles for user $REAL_USER..."
+            sudo -u "$REAL_USER" git clone "$REPO_URL" "$DOTFILES_DIR"
+        fi
+
+        # 5. Deploy using GNU Stow
+        if ask "Deploy dotfiles using GNU Stow?" "Y"; then
+            echo -e "${YELLOW}Note: This will symlink folders from $DOTFILES_DIR to $REAL_HOME.${NC}"
+
+            # Optional: Let the user specify which folders to stow, or stow everything.
+            read -p "Enter stow folders (space separated, e.g., 'hypr waybar', or '.' for all): " STOW_PKGS
+
+            if [ -n "$STOW_PKGS" ]; then
+                pushd "$DOTFILES_DIR" > /dev/null || return
+
+                if [ "$STOW_PKGS" = "." ]; then
+                    echo "Stowing all directories..."
+                    sudo -u "$REAL_USER" stow -t "$REAL_HOME" .
+                else
+                    for pkg in $STOW_PKGS; do
+                        echo "Stowing $pkg..."
+                        sudo -u "$REAL_USER" stow -t "$REAL_HOME" "$pkg"
+                    done
+                fi
+
+                popd > /dev/null || return
+                echo -e "${GREEN}Dotfiles deployed successfully!${NC}"
+            else
+                echo "No packages specified. Skipping stow."
+            fi
+        else
+            echo -e "${YELLOW}Dotfiles cloned to $DOTFILES_DIR but not deployed.${NC}"
+        fi
     fi
 }
 
 setup_shell() {
 	echo -e "${CYAN}=== Setting up Bash & Starship ===${NC}"
-    ask "Install Starship prompt?" "Y" && echo "Installing Starship..."
-    ask "Apply custom .bashrc configurations?" "Y" && echo "Configuring .bashrc..."
-    # TODO: Shell logic
+
+	# Detect the real user running sudo, and their home directory
+    local REAL_USER=${SUDO_USER:-$(whoami)}
+    local USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+
+    if ask "Install Starship prompt?" "Y"; then
+        echo -e "${YELLOW}Installing Starship...${NC}"
+        # Fedora has Starship in its official repositories
+        dnf install -y starship
+    fi
+
+    if ask "Apply custom .bashrc configurations?" "Y"; then
+        echo -e "${YELLOW}Configuring .bashrc for $REAL_USER...${NC}"
+
+        local BASHRC_PATH="$USER_HOME/.bashrc"
+
+        # 1. Backup the existing .bashrc just in case
+        if [ -f "$BASHRC_PATH" ]; then
+            cp "$BASHRC_PATH" "${BASHRC_PATH}.backup_$(date +%s)"
+            echo "Created backup of .bashrc"
+        fi
+
+        # 2. Append Starship init if it doesn't already exist
+        if ! grep -q 'starship init bash' "$BASHRC_PATH"; then
+            echo -e '\n# Initialize Starship Prompt\neval "$(starship init bash)"' >> "$BASHRC_PATH"
+            echo "Added Starship to .bashrc"
+        fi
+
+        # 3. Add custom aliases (Add any others you want here)
+        if ! grep -q 'alias ls=' "$BASHRC_PATH"; then
+            cat << 'EOF' >> "$BASHRC_PATH"
+
+# Custom Aliases
+alias ls='ls --color=auto'
+alias ll='ls -lha'
+alias grep='grep --color=auto'
+EOF
+            echo "Added custom aliases to .bashrc"
+        fi
+
+        # 4. Ensure the real user actually owns their .bashrc (fixes root permission issues)
+        chown "$REAL_USER":"$REAL_USER" "$BASHRC_PATH"
+
+        echo -e "${GREEN}Bash configurations applied successfully!${NC}"
+    fi
 }
 
 # ==========================================
@@ -419,6 +528,7 @@ full_setup() {
     echo -e "${YELLOW}Starting Full System Setup...${NC}"
     
     ask "Step 1: Change DNS?" "Y" && change_dns
+    ask "Step 1.5: Optimize DNF config?" "Y" && setup_dnf_config
     ask "Step 2: Add Repositories?" "Y" && add_repos
     ask "Step 3: Setup Flatpak?" "Y" && setup_flatpak
     ask "Step 4: Install Package Groups?" "Y" && install_groups
@@ -454,6 +564,7 @@ show_menu() {
     echo "10. Install Noctalia"
     echo "11. Copy Dotfiles"
     echo "12. Setup Bash + Starship"
+    echo "13. Setup Sane DNF Config"
     echo "0. Exit"
     echo -e "${GREEN}=======================================${NC}"
 }
@@ -478,6 +589,7 @@ main() {
             10) install_noctalia; pause ;;
             11) setup_dotfiles; pause ;;
             12) setup_shell; pause ;;
+	    13) setup_dnf_config; pause ;;
             0) echo "Exiting..."; exit 0 ;;
             *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 2 ;;
         esac
