@@ -567,6 +567,32 @@ EOF
     fi
 }
 
+setup_snapper() {
+    echo -e "${CYAN}=== Setting up Snapper ===${NC}"
+
+    if ask "Install and configure Snapper for BTRFS snapshots?" "Y"; then
+        echo -e "${YELLOW}Cloning and running Snapper setup...${NC}"
+        
+        # Create a temporary directory to keep the workspace clean
+        local SNAPPER_DIR=$(mktemp -d)
+        pushd "$SNAPPER_DIR" > /dev/null || return
+
+        # User's setup commands
+        git clone https://github.com/SysGuides/sysguides-snapper-fedora .
+        chmod +x install.sh
+        ./install.sh
+
+        popd > /dev/null || return
+        
+        # Cleanup temporary directory
+        rm -rf "$SNAPPER_DIR"
+        
+        echo -e "${GREEN}Snapper setup script execution complete.${NC}"
+    else
+        echo "Skipping Snapper setup."
+    fi
+}
+
 # ==========================================
 # FULL SETUP
 # ==========================================
@@ -586,7 +612,8 @@ full_setup() {
     ask "Step 9: Install Noctalia?" "Y" && install_noctalia
     ask "Step 10: Copy Dotfiles?" "Y" && setup_dotfiles
     ask "Step 11: Setup Bash & Starship?" "Y" && setup_shell
-
+    ask "Step 12: Setup Snapper?" "Y" && setup_snapper
+    
     echo -e "${GREEN}=== Full Setup Complete! Please Reboot. ===${NC}"
 }
 
@@ -612,6 +639,7 @@ show_menu() {
     echo "11. Copy Dotfiles"
     echo "12. Setup Bash + Starship"
     echo "13. Setup Sane DNF Config"
+    echo "14. Setup Snapper"
     echo "0. Exit"
     echo -e "${GREEN}=======================================${NC}"
 }
@@ -638,8 +666,9 @@ main() {
             11) setup_dotfiles; pause ;;
             12) setup_shell; pause ;;
 	    13) setup_dnf_config; pause ;;
+	    14) setup_snapper; pause ;;
             0) echo "Exiting..."; exit 0 ;;
-            *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 2 ;;
+            *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 1 ;;
         esac
     done
 }
