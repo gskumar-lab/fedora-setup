@@ -143,6 +143,46 @@ EOF
     fi
 }
 
+setup_dnf_config() {
+    echo -e "${CYAN}=== Configuring Sane DNF Defaults ===${NC}"
+    
+    if ask "Apply optimized DNF settings (faster downloads, fastest mirror, default yes)?" "Y"; then
+        local DNF_CONF="/etc/dnf/dnf.conf"
+        
+        # 1. Backup the original config
+        if [ ! -f "${DNF_CONF}.backup" ]; then
+            cp "$DNF_CONF" "${DNF_CONF}.backup"
+            echo "Created backup of $DNF_CONF"
+        fi
+
+        # 2. Define our sane defaults
+        # max_parallel_downloads: Speeds up fetching packages
+        # fastestmirror: Automatically connects to the lowest latency servers
+        # defaultyes: Assumes 'y' for all DNF prompts automatically
+        declare -A DNF_SETTINGS=(
+            ["max_parallel_downloads"]="10"
+            ["fastestmirror"]="True"
+            ["defaultyes"]="True"
+        )
+
+        # 3. Apply settings safely
+        for key in "${!DNF_SETTINGS[@]}"; do
+            local value="${DNF_SETTINGS[$key]}"
+            
+            # If the setting already exists, modify it. Otherwise, append it.
+            if grep -q "^${key}=" "$DNF_CONF"; then
+                sed -i "s/^${key}=.*/${key}=${value}/" "$DNF_CONF"
+            else
+                echo "${key}=${value}" >> "$DNF_CONF"
+            fi
+        done
+
+        echo -e "${GREEN}DNF configuration optimized!${NC}"
+    else
+        echo "Skipping DNF configuration."
+    fi
+}
+
 add_repos() {
 	echo -e "${CYAN}=== Adding Repositories ===${NC}"
 
