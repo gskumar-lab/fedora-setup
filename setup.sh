@@ -192,8 +192,8 @@ add_repos() {
             https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
             https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
 
-        # Pulls in necessary AppStream metadata for the new repos
-        dnf groupupdate core -y
+        # Pulls in necessary updates from the new repos
+        dnf upgrade --refesh -y
         echo -e "${GREEN}RPM Fusion added successfully.${NC}"
     else
         echo "Skipping RPM Fusion."
@@ -271,115 +271,103 @@ install_groups() {
 }
 
 install_core_tools() {
-	echo -e "${CYAN}=== Installing Core System Tools ===${NC}"
+    printf "%b\n" "${CYAN}=== Installing Core System Tools ===${NC}"
 
     if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
-        # Define the array of core packages
-	
-	ALL_PACKAGES=(
-	    "${SYS_CORE[@]}"
-	    "${APPEARANCE[@]}"
-	    "${CLI_TOOLS[@]}"
-	    "${SYS_SERVICES[@]}"
-	    "${VIRTUALIZATION[@]}"
-	)
+        # Define the lists of core packages as standard POSIX strings
+        SYS_CORE="acpid \
+            cmake \
+            config-manager \
+            dkms \
+            dnf-plugins-core \
+            gcc \
+            kernel-devel-matched \
+            kernel-headers \
+            libglvnd-devel \
+            libglvnd-glx \
+            libglvnd-opengl \
+            make \
+            pkgconfig \
+            power-profiles-daemon \
+            supergfxctl"
+            
+        APPEARANCE="adw-gtk3-theme \
+            bibata-cursor-theme \
+            google-noto-color-emoji-fonts \
+            jetbrainsmono-nerd-fonts \
+            nerdfontssymbolsonly-nerd-fonts \
+            nwg-look \
+            qt5ct \
+            qt6ct \
+            papirus-icon-theme"
+            
+        CLI_TOOLS="7zip \
+            aria2 \
+            bat \
+            btop \
+            curl \
+            dialog \
+            eza \
+            fastfetch \
+            fd \
+            ffmpeg \
+            fish \
+            fzf \
+            gdu \
+            git \
+            grim \
+            jq \
+            nano \
+            nmtui \
+            pipx \
+            poppler \
+            python3-pip \
+            rg \
+            rsync \
+            starship \
+            slurp \
+            tealdeer \
+            tesseract \
+            tesseract-langpack-eng \
+            topgrade \
+            vim \
+            wget \
+            yazi \
+            yt-dlp \
+            zoxide"
+            
+        SYS_SERVICES="gnome-disk-utility \
+            gnome-keyring \
+            gnome-keyring-pam \
+            gnome-software \
+            gocryptfs \
+            gvfs \
+            kde-cli-tools \
+            lxmenu-data \
+            pavucontrol \
+            rofi \
+            xarchiver \
+            xdg-user-dirs \
+            xdg-user-dirs-update"
+            
+        VIRTUALIZATION="libvirt \
+            virt-install \
+            virt-manager \
+            virt-viewer"
+        
+        # Combine strings
+        ALL_PACKAGES="$SYS_CORE $APPEARANCE $CLI_TOOLS $SYS_SERVICES $VIRTUALIZATION"
 
-	SYS_CORE=(
-	    acpid
-	    cmake
-	    config-manager
-	    dkms
-	    dnf-plugins-core
-	    gcc
-	    kernel-devel-matched
-	    kernel-headers
-	    libglvnd-devel
-	    libglvnd-glx
-	    libglvnd-opengl
-	    make
-	    pkgconfig
-	    power-profiles-daemon
-	    supergfxctl
-	)
-	APPEARANCE=(
-	    adw-gtk3-theme
-	    bibata-cursor-theme
-	    google-noto-color-emoji-fonts
-	    jetbrainsmono-nerd-fonts
-	    nerdfontssymbolsonly-nerd-fonts
-	    nwg-look
-	    qt5ct
-    	    qt6ct
-	    papirus-icon-theme
-	)
-	CLI_TOOLS=(
-	    7zip
-	    aria2
-	    bat
-	    btop
-	    curl
-	    dialog
-	    eza
-	    fastfetch
-	    fd
-	    ffmpeg
-	    fish
-	    fzf
-	    gdu
-	    git
-	    grim
-	    jq
-	    nano
-	    nmtui
-	    pipx
-	    poppler
-	    python3-pip
-	    rg
-	    rsync
-	    starship
-	    slurp
-	    tealdeer
-	    tesseract
-	    tesseract-langpack-eng
-	    topgrade
-	    vim
-	    wget
-	    yazi
-	    yt-dlp
-	    zoxide
-	)
-	SYS_SERVICES=(
-	    gnome-disk-utility
-	    gnome-keyring
-	    gnome-keyring-pam
-	    gnome-software
-	    gocryptfs
-	    gvfs
-	    kde-cli-tools
-	    lxmenu-data
-	    pavucontrol
-	    rofi
-	    xarchiver
-	    xdg-user-dirs
-	    xdg-user-dirs-update
-	)
-	VIRTUALIZATION=(
-	    libvirt
-	    virt-install
-	    virt-manager
-	    virt-viewer
-	)
+        printf "%b\n" "${YELLOW}Installing core packages...${NC}"
 
-        echo -e "${YELLOW}Installing core packages...${NC}"
-
-        # Pass the entire array to dnf so it resolves dependencies in one go
-        if  sudo dnf install -y "${ALL_PACKAGES[@]}"; then
-            echo -e "${GREEN}Core tools installed successfully.${NC}"
+        # Execute without quotes around $ALL_PACKAGES to utilize standard word splitting
+        if sudo dnf install -y $ALL_PACKAGES; then
+            printf "%b\n" "${GREEN}Core tools installed successfully.${NC}"
         else
-            echo -e "${RED}Error: Failed to install some core tools. Please check the output above.${NC}"
+            printf "%b\n" "${RED}Error: Failed to install some core tools. Please check the output above.${NC}"
         fi
     else
-        echo "Skipping core system tools."
+        printf "%s\n" "Skipping core system tools."
     fi
 }
 
@@ -430,7 +418,7 @@ install_supergfxctl() {
 
     if ask "Install supergfxctl (Graphics switching tool, recommended for hybrid GPUs/ASUS laptops)?" "Y"; then
         dnf copr enable lukenukem/asus-linux -y
-	sudo dnf install -y supergfxctl
+	    sudo dnf install -y supergfxctl
         
         # Enable and start the daemon so it works immediately
         sudo systemctl enable --now supergfxd.service
@@ -442,61 +430,56 @@ install_supergfxctl() {
 }
 
 install_apps() {
-	echo -e "${CYAN}=== Installing Apps ===${NC}"
-	choose_browser
-	choose_file_manager
+    printf "%b\n" "${CYAN}=== Installing Apps ===${NC}"
+    choose_browser
+    choose_file_manager
 
-    # ---------------------------------------------------------
-    # EDIT THESE ARRAYS TO ADD/REMOVE YOUR PREFERRED APPS
-    # ---------------------------------------------------------
-    local dnf_apps=(
-        foot                  # Terminal emulator
-        mpv                    # Video player
-        feh                    # Image viewer
-        easyeffects
-        evince
-        feh
-        galculator
-        geany
-        localsend
-        mpv
-        onlyoffice-desktopeditors
-        pcmanfm
-        telegram-desktop
-        )
-    local flatpak_apps=(i
-	com.bitwarden.desktop
-	com.rtosta.zapzap
-	io.ente.auth
-	org.kde.drawy
-    )
+    # PREFERRED APPS
+    # Removed 'local' and bash arrays, replaced with standard strings
+    dnf_apps="easyeffects \
+        evince \
+        feh \
+        foot \
+        galculator \
+        geany \
+        localsend \
+        mpv \
+        onlyoffice-desktopeditors \
+        telegram-desktop"
+        
+    flatpak_apps="com.bitwarden.desktop \
+        com.rtosta.zapzap \
+        io.ente.auth \
+        org.kde.drawy"
     # ---------------------------------------------------------
 
     if ask "Install GUI Apps via DNF?" "Y"; then
-        echo -e "${YELLOW}Installing DNF apps...${NC}"
-        dnf install -y "${dnf_apps[@]}"
-        echo -e "${GREEN}DNF apps installed successfully.${NC}"
+        printf "%b\n" "${YELLOW}Installing DNF apps...${NC}"
+        # Unquoted variable allows word splitting to separate package names
+        dnf install -y --skip-unavailable $dnf_apps
+        printf "%b\n" "${GREEN}DNF apps installed successfully.${NC}"
     else
-        echo "Skipping DNF apps."
+        printf "%s\n" "Skipping DNF apps."
     fi
 
     if ask "Install GUI Apps via Flatpak?" "Y"; then
-
         # Failsafe: Ensure flatpak command exists just in case they skipped the Flatpak setup step earlier
-        if ! command -v flatpak &> /dev/null; then
-            echo -e "${RED}Flatpak is not installed. Attempting to install it now...${NC}"
-	    # Call setup_flatpak. If it returns 1 (user says no), abort app install.
+        # Replaced non-POSIX '&>' with standard '> /dev/null 2>&1'
+        if ! command -v flatpak > /dev/null 2>&1; then
+            printf "%b\n" "${RED}Flatpak is not installed. Attempting to install it now...${NC}"
+            # Call setup_flatpak. If it returns 1 (user says no), abort app install.
             setup_flatpak || {
-                echo -e "${RED}Flatpak setup was aborted. Cannot install Flatpak apps.${NC}"
-                return
+                printf "%b\n" "${RED}Flatpak setup was aborted. Cannot install Flatpak apps.${NC}"
+                return 1
             }
         fi
 
-        echo -e "${YELLOW}Installing Flatpak apps...${NC}"
-	flatpak install -y flathub "${flatpak_apps[@]}"
-        echo -e "${GREEN}Flatpak apps installed successfully.${NC}"
+        printf "%b\n" "${YELLOW}Installing Flatpak apps...${NC}"
+        # Unquoted variable allows word splitting to separate package names
+        flatpak install -y flathub $flatpak_apps
+        printf "%b\n" "${GREEN}Flatpak apps installed successfully.${NC}"
     else
-        echo "Skipping Flatpak apps."
+        printf "%s\n" "Skipping Flatpak apps."
     fi
 }
 
@@ -580,13 +563,31 @@ install_hyprland() {
         dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     fi
 
-    if ask "Install and enable SDDM (Display Manager / Login Screen)?" "N"; then
-        echo "Installing SDDM..."
-        dnf install -y sddm
+	echo "Configuring SELinux to Permissive mode..."
+	# Set current session to permissive
+	setenforce 0 || echo "Warning: Could not set active SELinux enforcement."
+
+	# Make permissive mode persistent across reboots
+	if [ -f /etc/selinux/config ]; then
+	  sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+	  echo "SELinux configuration updated to permissive in /etc/selinux/config."
+	else
+	  echo "Warning: /etc/selinux/config not found. SELinux might not be installed."
+	fi
+
+	echo "Disabling existing graphical display managers..."
+	# Disable common display managers to avoid conflicts
+	systemctl disable gdm.service 2>/dev/null || true
+	systemctl disable sddm.service 2>/dev/null || true
+	systemctl disable lightdm.service 2>/dev/null || true
+
+    if ask "Install and enable LY (Display Manager / Login Screen)?" "N"; then
+        echo "Installing LY..."
+        dnf install -y ly
         # Enable it to start automatically on boot
-        systemctl enable sddm.service
+        systemctl enable ly@tty2.service
     else
-        echo -e "${YELLOW}Skipping SDDM. You will need to log in via TTY and type 'Hyprland' to start your session.${NC}"
+        echo -e "${YELLOW}Skipping LY. You will need to log in via TTY and type 'start-hyprland' to start your session.${NC}"
     fi
 
     echo -e "${GREEN}Hyprland setup complete.${NC}"
@@ -604,18 +605,16 @@ install_noctalia() {
 }
 
 setup_dotfiles() {
-	echo -e "${CYAN}=== Copying Dotfiles ===${NC}"
+    echo -e "${CYAN}=== Copying Dotfiles ===${NC}"
 
-	if ask "Clone and deploy your dotfiles?" "Y"; then
-
-        # 1. Identify the real user (since the script runs as root)
+    if ask "Clone and deploy your dotfiles?" "Y"; then
+        # 1. Identify the real user
         local REAL_USER=${SUDO_USER:-$(whoami)}
         local REAL_HOME=$(eval echo ~$REAL_USER)
 
-        # 2. Define repository URL (You can hardcode your repo here)
-        local DEFAULT_REPO=""
+        # 2. Define repository URL
+        local DEFAULT_REPO="https://github.com/gskumar-lab/dotfiles.git"
         local REPO_URL
-
         read -p "Enter your dotfiles Git repo URL [${DEFAULT_REPO}]: " REPO_URL
         REPO_URL=${REPO_URL:-$DEFAULT_REPO}
 
@@ -624,57 +623,33 @@ setup_dotfiles() {
             return
         fi
 
-        local DOTFILES_DIR="${REAL_HOME}/dotfiles"
+        # 3. Clone to a TEMPORARY directory
+        local TMP_DIR="/tmp/dotfiles_deploy_$$"
+        echo "Cloning dotfiles..."
+        git clone "$REPO_URL" "$TMP_DIR"
 
-        # 3. Ensure git and stow are installed
-        if ! command -v git &> /dev/null || ! command -v stow &> /dev/null; then
-            echo -e "${YELLOW}Installing git and GNU stow...${NC}"
-            dnf install -y git stow
-        fi
+        # 4. Deploy via hard copy from the 'home' folder
+        if ask "Deploy dotfiles to $REAL_HOME?" "Y"; then
+            
+            # Verify the 'home' folder actually exists in the cloned repo
+            if [ -d "$TMP_DIR/home" ]; then
+                echo -e "${YELLOW}Copying files permanently to $REAL_HOME...${NC}"
 
-        # 4. Clone the repository
-        if [ -d "$DOTFILES_DIR" ]; then
-            echo -e "${YELLOW}Directory $DOTFILES_DIR already exists.${NC}"
-            if ask "Remove existing directory and re-clone?" "N"; then
-                rm -rf "$DOTFILES_DIR"
-                sudo -u "$REAL_USER" git clone "$REPO_URL" "$DOTFILES_DIR"
-            else
-                echo "Using existing repository. Pulling latest changes..."
-                sudo -u "$REAL_USER" bash -c "cd $DOTFILES_DIR && git pull"
-            fi
-        else
-            echo "Cloning dotfiles for user $REAL_USER..."
-            sudo -u "$REAL_USER" git clone "$REPO_URL" "$DOTFILES_DIR"
-        fi
+                # The "/." at the end ensures we copy the CONTENTS of the home folder, 
+                # not the folder itself, including hidden files.
+                sudo -u "$REAL_USER" cp -a "$TMP_DIR/home/." "$REAL_HOME/"
 
-        # 5. Deploy using GNU Stow
-        if ask "Deploy dotfiles using GNU Stow?" "Y"; then
-            echo -e "${YELLOW}Note: This will symlink folders from $DOTFILES_DIR to $REAL_HOME.${NC}"
-
-            # Optional: Let the user specify which folders to stow, or stow everything.
-            read -p "Enter stow folders (space separated, e.g., 'hypr waybar', or '.' for all): " STOW_PKGS
-
-            if [ -n "$STOW_PKGS" ]; then
-                pushd "$DOTFILES_DIR" > /dev/null || return
-
-                if [ "$STOW_PKGS" = "." ]; then
-                    echo "Stowing all directories..."
-                    sudo -u "$REAL_USER" stow -t "$REAL_HOME" .
-                else
-                    for pkg in $STOW_PKGS; do
-                        echo "Stowing $pkg..."
-                        sudo -u "$REAL_USER" stow -t "$REAL_HOME" "$pkg"
-                    done
-                fi
-
-                popd > /dev/null || return
                 echo -e "${GREEN}Dotfiles deployed successfully!${NC}"
             else
-                echo "No packages specified. Skipping stow."
+                echo -e "${RED}Error: 'home' directory not found in the repository!${NC}"
             fi
+
         else
-            echo -e "${YELLOW}Dotfiles cloned to $DOTFILES_DIR but not deployed.${NC}"
+            echo -e "${YELLOW}Deployment cancelled.${NC}"
         fi
+
+        # 5. Clean up the temporary repository to leave no trace
+        rm -rf "$TMP_DIR"
     fi
 }
 
