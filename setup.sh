@@ -235,41 +235,105 @@ install_core_tools() {
 
     if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
         # Define the array of core packages
-        local core_pkgs=(
-            # Networking & Downloading
-            curl
-            wget
+	
+	ALL_PACKAGES=(
+	    "${SYS_CORE[@]}"
+	    "${APPEARANCE[@]}"
+	    "${CLI_TOOLS[@]}"
+	    "${SYS_SERVICES[@]}"
+	    "${VIRTUALIZATION[@]}"
+	)
 
-            # Version Control & Dotfile Management
-            git
-            stow       # Highly recommended for managing dotfiles symlinks
-
-            # Archives & Data
-            zip
-            unzip
-            tar
-            jq         # Command-line JSON processor
-
-            # System Monitoring & Fetch
-            btop       # Modern replacement for htop
-            fastfetch  # Modern replacement for neofetch
-
-            # Modern CLI Utilities (Rust rewrites)
-            eza        # Modern replacement for ls
-            bat        # Modern replacement for cat
-            fzf        # Command-line fuzzy finder
-            zoxide     # Smarter cd command
-            ripgrep    # Faster grep
-            fd-find    # Faster find
-
-            # Text Editors
-            neovim
-        )
+	SYS_CORE=(
+	    acpid
+	    cmake
+	    config-manager
+	    dkms
+	    dnf-plugins-core
+	    gcc
+	    kernel-devel-matched
+	    kernel-headers
+	    libglvnd-devel
+	    libglvnd-glx
+	    libglvnd-opengl
+	    make
+	    pkgconfig
+	    power-profiles-daemon
+	    supergfxctl
+	)
+	APPEARANCE=(
+	    adw-gtk3-theme
+	    bibata-cursor-theme
+	    google-noto-color-emoji-fonts
+	    jetbrainsmono-nerd-fonts
+	    nerdfontssymbolsonly-nerd-fonts
+	    nwg-look
+	    qt5ct
+    	    qt6ct
+	    papirus-icon-theme
+	)
+	CLI_TOOLS=(
+	    7zip
+	    aria2
+	    bat
+	    btop
+	    curl
+	    dialog
+	    eza
+	    fastfetch
+	    fd
+	    ffmpeg
+	    fish
+	    fzf
+	    gdu
+	    git
+	    grim
+	    jq
+	    nano
+	    nmtui
+	    pipx
+	    poppler
+	    python3-pip
+	    rg
+	    rsync
+	    starship
+	    slurp
+	    tealdeer
+	    tesseract
+	    tesseract-langpack-eng
+	    topgrade
+	    vim
+	    wget
+	    yazi
+	    yt-dlp
+	    zoxide
+	)
+	SYS_SERVICES=(
+	    gnome-disk-utility
+	    gnome-keyring
+	    gnome-keyring-pam
+	    gnome-software
+	    gocryptfs
+	    gvfs
+	    kde-cli-tools
+	    lxmenu-data
+	    pavucontrol
+	    rofi
+	    xarchiver
+	    xdg-user-dirs
+	    xdg-user-dirs-update
+	)
+	VIRTUALIZATION=(
+	    libvirt
+	    virt-install
+	    virt-manager
+	    virt-viewer
+	)
 
         echo -e "${YELLOW}Installing core packages...${NC}"
 
         # Pass the entire array to dnf so it resolves dependencies in one go
-        if dnf install -y "${core_pkgs[@]}"; then
+        if  sudo dnf install -y "${ALL_PACKAGES[@]}"; then
             echo -e "${GREEN}Core tools installed successfully.${NC}"
         else
             echo -e "${RED}Error: Failed to install some core tools. Please check the output above.${NC}"
@@ -317,31 +381,54 @@ install_gpu() {
             echo -e "${RED}Error installing Intel drivers.${NC}"
         fi
     fi
+
+    install_supergfxctl
+}
+
+install_supergfxctl() {
+    echo -e "${CYAN}=== Installing supergfxctl ===${NC}"
+
+    if ask "Install supergfxctl (Graphics switching tool, recommended for hybrid GPUs/ASUS laptops)?" "Y"; then
+        dnf copr enable lukenukem/asus-linux -y
+	sudo dnf install -y supergfxctl
+        
+        # Enable and start the daemon so it works immediately
+        sudo systemctl enable --now supergfxd.service
+        
+        echo -e "${GREEN}supergfxctl setup complete and service started.${NC}"
+    else
+        echo "Skipping supergfxctl installation."
+    fi
 }
 
 install_apps() {
 	echo -e "${CYAN}=== Installing Apps ===${NC}"
+	choose_browser
+	choose_file_manager
 
     # ---------------------------------------------------------
     # EDIT THESE ARRAYS TO ADD/REMOVE YOUR PREFERRED APPS
     # ---------------------------------------------------------
     local dnf_apps=(
-        firefox
-        kitty                  # Terminal emulator
-        thunar                 # File manager
-        thunar-volman
-        thunar-archive-plugin
-        pavucontrol            # GUI audio control
+        foot                  # Terminal emulator
         mpv                    # Video player
-        eog                    # Image viewer
-        polkit-gnome           # GUI authentication agent
-    )
-
-    local flatpak_apps=(
-        com.spotify.Client
-        com.discordapp.Discord
-        md.obsidian.Obsidian
-        # org.gimp.GIMP
+        feh                    # Image viewer
+        easyeffects
+        evince
+        feh
+        galculator
+        geany
+        localsend
+        mpv
+        onlyoffice-desktopeditors
+        pcmanfm
+        telegram-desktop
+        )
+    local flatpak_apps=(i
+	com.bitwarden.desktop
+	com.rtosta.zapzap
+	io.ente.auth
+	org.kde.drawy
     )
     # ---------------------------------------------------------
 
@@ -373,36 +460,84 @@ install_apps() {
     fi
 }
 
+choose_browser() {
+    echo -e "\n=== Browser Selection ==="
+    echo "Which browser would you like to install?"
+    
+    # Custom prompt for the select menu
+    PS3="Enter the number of your choice (1-5): "
+    
+    # Define the options
+    options=("Brave (brave-origin)" "Zen Browser" "Firefox" "Helium Browser" "Skip")
+    
+    select opt in "${options[@]}"; do
+        case $opt in
+            "Brave (brave-origin)")
+                echo "Installing Brave..."
+                sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo 
+                sudo dnf install -y brave-origin
+                break
+                ;;
+            "Zen Browser")
+                echo "Installing Zen Browser..."
+                sudo dnf install -y zen-browser 
+                break
+                ;;
+            "Firefox")
+                echo "Installing Firefox..."
+                sudo dnf install -y firefox
+                break
+                ;;
+            "Helium Browser")
+                echo "Installing Helium Browser..."
+                sudo dnf install -y helium-browser-bin
+                break
+                ;;
+            "Skip")
+                echo "Skipping browser installation."
+                break
+                ;;
+            *) 
+                echo "Invalid option: $REPLY. Please choose a number between 1 and 5."
+                ;;
+        esac
+    done
+}
+
+choose_file_manager() {
+    echo "Which file manager would you like to install?"
+
+    # Customizes the prompt string for the select menu
+    PS3="Enter the number of your choice (1-5): "
+
+    # Define the options
+    options=("dolphin" "pcmanfm" "thunar" "Skip")
+
+    select choice in "${options[@]}"; do
+        case $choice in
+            "dolphin"|"pcmanfm"|"thunar")
+                echo "Installing $choice..."
+                sudo dnf install -y "$choice"
+                break
+                ;;
+            "Skip")
+                echo "Skipping file manager installation."
+                break
+                ;;
+            *)
+                echo "Invalid option: $REPLY. Please choose a number between 1 and 5."
+                ;;
+        esac
+    done
+}
+
 install_hyprland() {
 	echo -e "${CYAN}=== Installing Hyprland ===${NC}"
 
 	if ask "Install core Hyprland compositor and XDG portals?" "Y"; then
         echo "Installing core Hyprland..."
-        # xdg-desktop-portal-gtk is needed as a fallback for apps that don't support the hyprland portal
-        dnf install -y hyprland xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
-    fi
-
-    if ask "Install Wayland utilities (clipboard, screenshots, QT-Wayland support)?" "Y"; then
-        echo "Installing Wayland utilities..."
-        # wl-clipboard: copy/paste support
-        # grim & slurp: screenshot capabilities
-        # qt5/6-qtwayland: ensures QT apps run natively in Wayland instead of XWayland
-        dnf install -y wl-clipboard grim slurp qt5-qtwayland qt6-qtwayland
-    fi
-
-    if ask "Install desktop components (Waybar, Rofi, Kitty, Hyprpaper/lock/idle, Dunst)?" "Y"; then
-        echo "Installing desktop components..."
-        # Kitty is Hyprland's default terminal for its auto-generated config
-        # We use rofi-wayland specifically for native Wayland support
-        dnf install -y waybar rofi-wayland kitty hyprpaper hyprlock hypridle dunst
-    fi
-
-    if ask "Install system controls (audio, brightness, polkit)?" "Y"; then
-        echo "Installing system controls..."
-        # pamixer & pavucontrol: audio management
-        # brightnessctl: screen brightness management
-        # polkit-gnome: GUI prompt for sudo/admin password requests in GUI apps
-        dnf install -y pamixer brightnessctl pavucontrol polkit-gnome
+        dnf copr enable lionheartp/Hyprland -y
+        dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
     fi
 
     if ask "Install and enable SDDM (Display Manager / Login Screen)?" "N"; then
@@ -422,24 +557,9 @@ install_noctalia() {
 
 	if ask "Install Noctalia (Unified Wayland Desktop Shell)?" "Y"; then
             sudo dnf install -y noctalia
-
-        if ask "Apply default Noctalia configuration?" "Y"; then
-            echo "Setting up configuration in ~/.config/noctalia..."
-            mkdir -p ~/.config/noctalia
-
-            # Noctalia provides an example.toml that acts as the starting point
-            # for all the modules (bar, launcher, notifications, etc.)
-            if [ -f ~/.local/src/noctalia/example.toml ]; then
-                cp ~/.local/src/noctalia/example.toml ~/.config/noctalia/config.toml
-                echo "Default Noctalia config applied."
-            else
-                echo -e "${YELLOW}Warning: example.toml not found. You may need to create config.toml manually.${NC}"
-            fi
-        fi
-
-        echo -e "${GREEN}Noctalia setup complete.${NC}"
-    else
-        echo "Skipping Noctalia installation."
+        	echo -e "${GREEN}Noctalia setup complete.${NC}"
+    	else
+        	echo "Skipping Noctalia installation."
     fi
 }
 
