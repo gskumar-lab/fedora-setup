@@ -260,6 +260,7 @@ install_groups() {
         echo -e "${YELLOW}Installing Multimedia...${NC}"
         # Since you added RPM Fusion earlier, this will automatically pull in
         # non-free codecs, gstreamer plugins, and hardware acceleration packages
+    	dnf install ffmpeg --allowerasing -y
         dnf group install -y "multimedia"
     fi
 
@@ -356,7 +357,7 @@ install_core_tools() {
             virt-viewer"
         
         # Combine strings
-        ALL_PACKAGES="$SYS_CORE + $APPEARANCE + $CLI_TOOLS + $SYS_SERVICES + $VIRTUALIZATION"
+        ALL_PACKAGES="$SYS_CORE  $APPEARANCE  $CLI_TOOLS  $SYS_SERVICES  $VIRTUALIZATION"
 
         printf "%b\n" "${YELLOW}Installing core packages...${NC}"
 
@@ -581,7 +582,7 @@ install_hyprland() {
 	systemctl disable sddm.service 2>/dev/null || true
 	systemctl disable lightdm.service 2>/dev/null || true
 
-    if ask "Install and enable LY (Display Manager / Login Screen)?" "N"; then
+    if ask "Install and enable LY (Display Manager / Login Screen)?" "Y"; then
         echo "Installing LY..."
         dnf install -y ly
         # Enable it to start automatically on boot
@@ -715,7 +716,15 @@ setup_snapper() {
         # User's setup commands
         git clone https://github.com/SysGuides/sysguides-snapper-fedora .
         chmod +x install.sh
-        ./install.sh
+
+	# 1. Identify the real user who ran the sudo command
+        local REAL_USER=${SUDO_USER:-$(whoami)}
+
+        # 2. Change ownership of the temp directory so the normal user has permissions
+        chown -R "$REAL_USER":"$REAL_USER" "$SNAPPER_DIR"
+
+        # 3. Execute the script as the normal user
+        sudo -u "$REAL_USER" ./install.sh
 
         popd > /dev/null || return
         
