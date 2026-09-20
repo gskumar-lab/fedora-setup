@@ -274,10 +274,11 @@ install_core_tools() {
     printf "%b\n" "${CYAN}=== Installing Core System Tools ===${NC}"
 
     if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
-        # Define the lists of core packages as standard POSIX strings
+        
+    dnf install ffmpeg --allowerasing -y
+    # Define the lists of core packages as standard POSIX strings
         SYS_CORE="acpid \
             cmake \
-            config-manager \
             dkms \
             dnf-plugins-core \
             gcc \
@@ -310,7 +311,6 @@ install_core_tools() {
             eza \
             fastfetch \
             fd \
-            ffmpeg \
             fish \
             fzf \
             gdu \
@@ -356,7 +356,7 @@ install_core_tools() {
             virt-viewer"
         
         # Combine strings
-        ALL_PACKAGES="$SYS_CORE $APPEARANCE $CLI_TOOLS $SYS_SERVICES $VIRTUALIZATION"
+        ALL_PACKAGES="$SYS_CORE + $APPEARANCE + $CLI_TOOLS + $SYS_SERVICES + $VIRTUALIZATION"
 
         printf "%b\n" "${YELLOW}Installing core packages...${NC}"
 
