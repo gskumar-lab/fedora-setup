@@ -186,6 +186,8 @@ setup_dnf_config() {
 add_repos() {
 	echo -e "${CYAN}=== Adding Repositories ===${NC}"
 
+	dnf install dnf-plugins-core -y
+
     if ask "Add RPM Fusion (Free & Non-Free)?" "Y"; then
         echo -e "${YELLOW}Installing RPM Fusion repositories...${NC}"
         dnf install -y \
@@ -193,7 +195,7 @@ add_repos() {
             https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
 
         # Pulls in necessary updates from the new repos
-        dnf upgrade --refesh -y
+        dnf upgrade --refresh -y
         echo -e "${GREEN}RPM Fusion added successfully.${NC}"
     else
         echo "Skipping RPM Fusion."
@@ -202,7 +204,7 @@ add_repos() {
     if ask "Add Terra Repository?" "Y"; then
         echo -e "${YELLOW}Adding Terra repository...${NC}"
 
-	sudo dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release -y
+		dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release -y
 
         # The safest way across both DNF4 (F40) and DNF5 (F41+) is dropping the .repo file directly
         #curl -sLo /etc/yum.repos.d/terra.repo https://terra.fyralabs.com/terra.repo
@@ -239,14 +241,8 @@ setup_flatpak() {
 install_groups() {
     echo -e "${CYAN}=== Installing Package Groups ===${NC}"
 
-    if ask "Install 'Standard' group?" "Y"; then
-        echo -e "${YELLOW}Installing Standard group...${NC}"
-        dnf group install -y "standard"
-    fi
-
     if ask "Install 'NetworkManager Submodules'?" "Y"; then
         echo -e "${YELLOW}Installing NetworkManager Submodules...${NC}"
-        # This provides VPN plugins (OpenVPN, WireGuard, etc.) and specific network protocols
         dnf group install -y "networkmanager-submodules"
     fi
 
@@ -258,111 +254,52 @@ install_groups() {
 
     if ask "Install 'Multimedia'?" "Y"; then
         echo -e "${YELLOW}Installing Multimedia...${NC}"
-        # Since you added RPM Fusion earlier, this will automatically pull in
-        # non-free codecs, gstreamer plugins, and hardware acceleration packages
     	dnf install ffmpeg --allowerasing -y
         dnf group install -y "multimedia"
     fi
 
-    if ask "Install 'Development Tools'?" "Y"; then
-        echo -e "${YELLOW}Installing Development Tools...${NC}"
-        # Pulls in gcc, make, automake, git, and compiling dependencies
-        dnf group install -y "d-development"
+    if ask "Install 'Essential Fonts'?" "Y"; then
+        echo -e "${YELLOW}Installing Fonts...${NC}"
+        dnf install -y google-noto-color-emoji-fonts google-noto-sans-fonts google-noto-emoji-fonts google-noto-sans-mono-fonts jetbrainsmono-nerd-fonts nerdfontssymbolsonly-nerd-fonts
     fi
 }
 
 install_core_tools() {
     printf "%b\n" "${CYAN}=== Installing Core System Tools ===${NC}"
 
-    if ask "Install core CLI utilities (git, curl, wget, etc.)?" "Y"; then
+    if ask "Install core tools ?" "Y"; then
         
-    dnf install ffmpeg --allowerasing -y
-    # Define the lists of core packages as standard POSIX strings
-        SYS_CORE="acpid \
-            cmake \
-            dkms \
-            dnf-plugins-core \
-            gcc \
-            kernel-devel-matched \
-            kernel-headers \
-            libglvnd-devel \
-            libglvnd-glx \
-            libglvnd-opengl \
-            make \
-            pkgconfig \
-            power-profiles-daemon \
-            supergfxctl"
-            
-        APPEARANCE="adw-gtk3-theme \
-            bibata-cursor-theme \
-            google-noto-color-emoji-fonts \
-            jetbrainsmono-nerd-fonts \
-            nerdfontssymbolsonly-nerd-fonts \
-            nwg-look \
-            qt5ct \
-            qt6ct \
-            papirus-icon-theme"
-            
-        CLI_TOOLS="7zip \
-            aria2 \
-            bat \
-            btop \
-            curl \
-            dialog \
-            eza \
-            fastfetch \
-            fd \
-            fish \
-            fzf \
-            gdu \
-            git \
-            grim \
-            jq \
-            nano \
-            nmtui \
-            pipx \
-            poppler \
-            python3-pip \
-            rg \
-            rsync \
-            starship \
-            slurp \
-            tealdeer \
-            tesseract \
-            tesseract-langpack-eng \
-            topgrade \
-            vim \
-            wget \
-            yazi \
-            yt-dlp \
-            zoxide"
-            
-        SYS_SERVICES="gnome-disk-utility \
-            gnome-keyring \
-            gnome-keyring-pam \
-            gnome-software \
-            gocryptfs \
-            gvfs \
-            kde-cli-tools \
-            lxmenu-data \
-            pavucontrol \
-            rofi \
-            xarchiver \
-            xdg-user-dirs \
-            xdg-user-dirs-update"
-            
-        VIRTUALIZATION="libvirt \
-            virt-install \
-            virt-manager \
-            virt-viewer"
-        
-        # Combine strings
-        ALL_PACKAGES="$SYS_CORE  $APPEARANCE  $CLI_TOOLS  $SYS_SERVICES  $VIRTUALIZATION"
-
         printf "%b\n" "${YELLOW}Installing core packages...${NC}"
 
+        # Define the corrected package list as a multi-line string
+        ALL_PACKAGES=(
+            7zip 
+            acpid adw-gtk3-theme amd-ucode-firmware aria2
+            bat bash-completion bibata-cursor-theme bind-utils btop btrfs-progs brightnessctl
+            cmake curl chrony
+            dbus dialog dosfstools dkms
+            exfatprogs eza
+            fastfetch fd-find foot fzf
+            gcc gdu git gnome-keyring gnome-keyring-pam gocryptfs grim gvfs
+            jq
+            kde-cli-tools kernel-devel-matched kernel-headers
+            libglvnd-devel libglvnd-glx libglvnd-opengl libvirt lxmenu-data
+            make microcode_ctl
+            nano NetworkManager-tui ntfs-3g
+            papirus-icon-theme pavucontrol pciutils pipx pkgconfig poppler power-profiles-daemon python3-pip polkit-gnome
+            ripgrep rofi rsync
+            slurp stow sudo systemd-udev
+            tar tealdeer tesseract tesseract-langpack-eng topgrade
+            vim virt-install virt-manager virt-viewer
+            unzip usbutils
+            wget wget2-wget
+            xdg-user-dirs xorg-x11-server-Xwayland
+            yazi yt-dlp
+            zip zoxide
+        )
+
         # Execute without quotes around $ALL_PACKAGES to utilize standard word splitting
-        if sudo dnf install -y $ALL_PACKAGES; then
+        if dnf install -y --skip-unavailable "${ALL_PACKAGES[@]}"; then
             printf "%b\n" "${GREEN}Core tools installed successfully.${NC}"
         else
             printf "%b\n" "${RED}Error: Failed to install some core tools. Please check the output above.${NC}"
@@ -419,10 +356,10 @@ install_supergfxctl() {
 
     if ask "Install supergfxctl (Graphics switching tool, recommended for hybrid GPUs/ASUS laptops)?" "Y"; then
         dnf copr enable lukenukem/asus-linux -y
-	    sudo dnf install -y supergfxctl
+	    dnf install -y supergfxctl
         
         # Enable and start the daemon so it works immediately
-        sudo systemctl enable --now supergfxd.service
+        systemctl enable --now supergfxd.service
         
         echo -e "${GREEN}supergfxctl setup complete and service started.${NC}"
     else
@@ -435,37 +372,42 @@ install_apps() {
     choose_browser
     choose_file_manager
 
-    # PREFERRED APPS
-    # Removed 'local' and bash arrays, replaced with standard strings
-    dnf_apps="easyeffects \
-        evince \
-        feh \
-        foot \
-        galculator \
-        geany \
-        localsend \
-        mpv \
-        onlyoffice-desktopeditors \
-        telegram-desktop"
-        
-    flatpak_apps="com.bitwarden.desktop \
-        com.rtosta.zapzap \
-        io.ente.auth \
-        org.kde.drawy"
-    # ---------------------------------------------------------
+	# PREFERRED APPS
+	dnf_apps=(
+        easyeffects evince
+        feh
+        galculator geany gnome-disk-utility gnome-software
+        localsend
+        mpv
+        nwg-look
+        onlyoffice-desktopeditors
+        qt5ct qt6ct
+        telegram-desktop
+        xarchiver
+    )
 
     if ask "Install GUI Apps via DNF?" "Y"; then
         printf "%b\n" "${YELLOW}Installing DNF apps...${NC}"
-        # Unquoted variable allows word splitting to separate package names
-        dnf install -y --skip-unavailable $dnf_apps
-        printf "%b\n" "${GREEN}DNF apps installed successfully.${NC}"
+   
+        # Check if the installation command succeeds
+        if dnf install -y --skip-unavailable "${dnf_apps[@]}"; then
+            printf "%b\n" "${GREEN}DNF apps installed successfully.${NC}"
+        else
+            printf "%b\n" "${RED}Error: Failed to install some DNF apps. Please check the output above.${NC}"
+        fi
     else
         printf "%s\n" "Skipping DNF apps."
     fi
 
+	flatpak_apps=(
+        com.bitwarden.desktop
+        com.rtosta.zapzap
+        io.ente.auth
+        org.kde.drawy
+    )
+
     if ask "Install GUI Apps via Flatpak?" "Y"; then
         # Failsafe: Ensure flatpak command exists just in case they skipped the Flatpak setup step earlier
-        # Replaced non-POSIX '&>' with standard '> /dev/null 2>&1'
         if ! command -v flatpak > /dev/null 2>&1; then
             printf "%b\n" "${RED}Flatpak is not installed. Attempting to install it now...${NC}"
             # Call setup_flatpak. If it returns 1 (user says no), abort app install.
@@ -476,9 +418,11 @@ install_apps() {
         fi
 
         printf "%b\n" "${YELLOW}Installing Flatpak apps...${NC}"
-        # Unquoted variable allows word splitting to separate package names
-        flatpak install -y flathub $flatpak_apps
-        printf "%b\n" "${GREEN}Flatpak apps installed successfully.${NC}"
+		if flatpak install -y flathub "${flatpak_apps[@]}"; then
+            printf "%b\n" "${GREEN}Flatpak apps installed successfully.${NC}"
+        else
+            printf "%b\n" "${RED}Error: Failed to install some Flatpak apps. Please check the output above.${NC}"
+        fi
     else
         printf "%s\n" "Skipping Flatpak apps."
     fi
@@ -498,23 +442,23 @@ choose_browser() {
         case $opt in
             "Brave (brave-origin)")
                 echo "Installing Brave..."
-                sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo 
-                sudo dnf install -y brave-origin
+                dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo 
+                dnf install -y brave-origin
                 break
                 ;;
             "Zen Browser")
                 echo "Installing Zen Browser..."
-                sudo dnf install -y zen-browser 
+                dnf install -y zen-browser 
                 break
                 ;;
             "Firefox")
                 echo "Installing Firefox..."
-                sudo dnf install -y firefox
+                dnf install -y firefox
                 break
                 ;;
             "Helium Browser")
                 echo "Installing Helium Browser..."
-                sudo dnf install -y helium-browser-bin
+                dnf install -y helium-browser-bin
                 break
                 ;;
             "Skip")
@@ -541,7 +485,7 @@ choose_file_manager() {
         case $choice in
             "dolphin"|"pcmanfm"|"thunar")
                 echo "Installing $choice..."
-                sudo dnf install -y "$choice"
+                dnf install -y "$choice"
                 break
                 ;;
             "Skip")
@@ -598,7 +542,7 @@ install_noctalia() {
 	echo -e "${CYAN}=== Installing Noctalia ===${NC}"
 
 	if ask "Install Noctalia (Unified Wayland Desktop Shell)?" "Y"; then
-            sudo dnf install -y noctalia
+            dnf install -y noctalia
         	echo -e "${GREEN}Noctalia setup complete.${NC}"
     	else
         	echo "Skipping Noctalia installation."
@@ -717,7 +661,7 @@ setup_snapper() {
         git clone https://github.com/SysGuides/sysguides-snapper-fedora .
         chmod +x install.sh
 
-	# 1. Identify the real user who ran the sudo command
+		# 1. Identify the real user who ran the sudo command
         local REAL_USER=${SUDO_USER:-$(whoami)}
 
         # 2. Change ownership of the temp directory so the normal user has permissions
@@ -757,6 +701,10 @@ full_setup() {
     ask "Step 10: Copy Dotfiles?" "Y" && setup_dotfiles
     ask "Step 11: Setup Bash & Starship?" "Y" && setup_shell
     ask "Step 12: Setup Snapper?" "Y" && setup_snapper
+
+    echo "Cleanup..."
+    dnf autoremove -y
+    dnf clean all
     
     echo -e "${GREEN}=== Full Setup Complete! Please Reboot. ===${NC}"
 }
@@ -794,7 +742,7 @@ main() {
     
     while true; do
         show_menu
-        read -p "Select an option [0-12]: " choice
+        read -p "Select an option [0-14]: " choice
         
         case $choice in
             1) full_setup; pause ;;
@@ -809,8 +757,8 @@ main() {
             10) install_noctalia; pause ;;
             11) setup_dotfiles; pause ;;
             12) setup_shell; pause ;;
-	    13) setup_dnf_config; pause ;;
-	    14) setup_snapper; pause ;;
+			13) setup_dnf_config; pause ;;
+			14) setup_snapper; pause ;;
             0) echo "Exiting..."; exit 0 ;;
             *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 1 ;;
         esac
