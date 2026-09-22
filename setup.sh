@@ -380,7 +380,6 @@ install_apps() {
         localsend
         mpv
         nwg-look
-        onlyoffice-desktopeditors
         qt5ct qt6ct
         telegram-desktop
         xarchiver
@@ -401,9 +400,10 @@ install_apps() {
 
 	flatpak_apps=(
         com.bitwarden.desktop
-        com.rtosta.zapzap
-        io.ente.auth
         org.kde.drawy
+        io.ente.auth
+        org.onlyoffice.desktopeditors
+	com.rtosta.zapzap
     )
 
     if ask "Install GUI Apps via Flatpak?" "Y"; then
