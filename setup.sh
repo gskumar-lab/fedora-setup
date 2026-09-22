@@ -316,7 +316,7 @@ install_gpu() {
     if ask "Install AMD Drivers (Mesa/Vulkan/VAAPI)?" "N"; then
         echo -e "${YELLOW}Installing AMD packages...${NC}"
         # mesa-va-drivers is for hardware video acceleration, mesa-vulkan-drivers for gaming/Wayland
-        if dnf install -y mesa-dri-drivers mesa-vulkan-drivers mesa-va-drivers mesa-vdpau-drivers rocm-opencl; then
+        if dnf install -y mesa-dri-drivers mesa-vulkan-drivers mesa-va-drivers rocm-opencl; then
             echo -e "${GREEN}AMD drivers installed successfully.${NC}"
         else
             echo -e "${RED}Error installing AMD drivers.${NC}"
@@ -497,6 +497,7 @@ choose_file_manager() {
                 ;;
         esac
     done
+    xdg-user-dirs-update
 }
 
 install_hyprland() {
@@ -546,6 +547,40 @@ install_noctalia() {
         	echo -e "${GREEN}Noctalia setup complete.${NC}"
     	else
         	echo "Skipping Noctalia installation."
+    fi
+}
+
+setup_cloudflare_warp() {
+    echo -e "${CYAN}=== Setting up Cloudflare WARP ===${NC}"
+    
+    if ask "Install and configure Cloudflare WARP?" "Y"; then
+        echo -e "${YELLOW}Adding Cloudflare WARP repository...${NC}"
+        # Sudo is omitted here since the script already runs as root
+        curl -fsSl https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | tee /etc/yum.repos.d/cloudflare-warp.repo
+        
+        echo -e "${YELLOW}Updating package cache and installing WARP...${NC}"
+        dnf makecache
+        dnf install cloudflare-warp -y
+
+        echo -e "${YELLOW}Disabling WARP services...${NC}"
+        # Disable the system-wide service
+        systemctl disable --now warp-svc
+        
+        # Disable the user-specific service safely (targeting the actual user, not root)
+        local REAL_USER=${SUDO_USER:-$(whoami)}
+        if [ "$REAL_USER" != "root" ]; then
+            local USER_UID=$(id -u "$REAL_USER")
+            # We must set XDG_RUNTIME_DIR to interact with the user's systemd session
+            sudo -u "$REAL_USER" XDG_RUNTIME_DIR="/run/user/$USER_UID" systemctl --user disable --now warp-desktop-svc
+            echo "Disabled warp-desktop-svc for user: $REAL_USER"
+        else
+            # Fallback if somehow run as pure root without sudo
+            systemctl --user disable --now warp-desktop-svc
+        fi
+
+        echo -e "${GREEN}Cloudflare WARP installed and services disabled!${NC}"
+    else
+        echo "Skipping Cloudflare WARP setup."
     fi
 }
 
@@ -698,9 +733,10 @@ full_setup() {
     ask "Step 7: Install Apps?" "Y" && install_apps
     ask "Step 8: Install Hyprland?" "Y" && install_hyprland
     ask "Step 9: Install Noctalia?" "Y" && install_noctalia
-    ask "Step 10: Copy Dotfiles?" "Y" && setup_dotfiles
-    ask "Step 11: Setup Bash & Starship?" "Y" && setup_shell
-    ask "Step 12: Setup Snapper?" "Y" && setup_snapper
+    ask "Step 10: Setup Cloudflare WARP" "Y" && setup_cloudflare_warp
+    ask "Step 11: Copy Dotfiles?" "Y" && setup_dotfiles
+    ask "Step 12: Setup Bash & Starship?" "Y" && setup_shell
+    ask "Step 13: Setup Snapper?" "Y" && setup_snapper
 
     echo "Cleanup..."
     dnf autoremove -y
@@ -731,7 +767,8 @@ show_menu() {
     echo "11. Copy Dotfiles"
     echo "12. Setup Bash + Starship"
     echo "13. Setup Sane DNF Config"
-    echo "14. Setup Snapper"
+    echo "14. Setup Cloudflare WARP"
+    echo "15. Setup Snapper"
     echo "0. Exit"
     echo -e "${GREEN}=======================================${NC}"
 }
@@ -757,8 +794,9 @@ main() {
             10) install_noctalia; pause ;;
             11) setup_dotfiles; pause ;;
             12) setup_shell; pause ;;
-			13) setup_dnf_config; pause ;;
-			14) setup_snapper; pause ;;
+	    13) setup_dnf_config; pause ;;
+	    14) setup_cloudflare_warp; pause ;;
+	    15) setup_snapper; pause ;;
             0) echo "Exiting..."; exit 0 ;;
             *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 1 ;;
         esac
