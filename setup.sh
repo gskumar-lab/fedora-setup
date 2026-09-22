@@ -279,7 +279,7 @@ install_core_tools() {
             cmake curl chrony
             dbus dialog dosfstools dkms
             exfatprogs eza
-            fastfetch fd-find foot fzf
+            fastfetch fd-find foot foot-terminfo fzf
             gcc gdu git gnome-keyring gnome-keyring-pam gocryptfs grim gvfs
             jq
             kde-cli-tools kernel-devel-matched kernel-headers
@@ -498,6 +498,29 @@ choose_file_manager() {
         esac
     done
     xdg-user-dirs-update
+}
+
+install_optional_programs() {
+    echo -e "${CYAN}=== Installing Optional Programs ===${NC}"
+    
+    # Detect the real user so cargo binaries don't get stuck in /root/
+    local REAL_USER=${SUDO_USER:-$(whoami)}
+
+    # 1. Tuxedo
+    if ask "Install Tuxedo (system management CLI via Cargo)?" "N"; then
+        echo -e "${YELLOW}Setting up Tuxedo...${NC}"
+        
+        # Install as the real user
+        sudo -u "$REAL_USER" cargo install --git https://github.com/webstonehq/tuxedo
+        
+        echo -e "${GREEN}Tuxedo installed to /home/$REAL_USER/.cargo/bin!${NC}"
+        echo -e "${YELLOW}Note: Ensure ~/.cargo/bin is in your \$PATH (usually set in .bashrc)${NC}"
+    fi
+
+    # 2. Add more optional programs here later...
+    # if ask "Install Another Program?" "N"; then
+    #     dnf install -y some-package
+    # fi
 }
 
 install_hyprland() {
@@ -734,9 +757,10 @@ full_setup() {
     ask "Step 8: Install Hyprland?" "Y" && install_hyprland
     ask "Step 9: Install Noctalia?" "Y" && install_noctalia
     ask "Step 10: Setup Cloudflare WARP" "Y" && setup_cloudflare_warp
-    ask "Step 11: Copy Dotfiles?" "Y" && setup_dotfiles
-    ask "Step 12: Setup Bash & Starship?" "Y" && setup_shell
-    ask "Step 13: Setup Snapper?" "Y" && setup_snapper
+    ask "Step 11: Optional Programs" "Y" && setup_cloudflare_warp
+    ask "Step 12: Copy Dotfiles?" "Y" && setup_dotfiles
+    ask "Step 13: Setup Bash & Starship?" "Y" && setup_shell
+    ask "Step 14: Setup Snapper?" "Y" && setup_snapper
 
     echo "Cleanup..."
     dnf autoremove -y
@@ -768,7 +792,8 @@ show_menu() {
     echo "12. Setup Bash + Starship"
     echo "13. Setup Sane DNF Config"
     echo "14. Setup Cloudflare WARP"
-    echo "15. Setup Snapper"
+    echo "15. Optional Programs"
+    echo "16. Setup Snapper"
     echo "0. Exit"
     echo -e "${GREEN}=======================================${NC}"
 }
@@ -779,7 +804,7 @@ main() {
     
     while true; do
         show_menu
-        read -p "Select an option [0-14]: " choice
+        read -p "Select an option [0-16]: " choice
         
         case $choice in
             1) full_setup; pause ;;
@@ -796,7 +821,8 @@ main() {
             12) setup_shell; pause ;;
 	    13) setup_dnf_config; pause ;;
 	    14) setup_cloudflare_warp; pause ;;
-	    15) setup_snapper; pause ;;
+	    15) install_optional_programs; pause ;;
+	    16) setup_snapper; pause ;;
             0) echo "Exiting..."; exit 0 ;;
             *) echo -e "${RED}Invalid option. Please try again.${NC}"; sleep 1 ;;
         esac
