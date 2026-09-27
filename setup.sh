@@ -274,22 +274,23 @@ install_core_tools() {
         # Define the corrected package list as a multi-line string
         ALL_PACKAGES=(
             7zip 
-            acpid adw-gtk3-theme amd-ucode-firmware aria2
+            acpid adw-gtk3-theme amd-ucode-firmware aria2 ark
             bat bash-completion bibata-cursor-theme bind-utils btop btrfs-progs brightnessctl
-            cmake curl chrony
+            calc cmake curl chrony 
             dbus dialog dosfstools dkms
             exfatprogs eza
             fastfetch fd-find foot foot-terminfo fzf
-            gcc gdu git gnome-keyring gnome-keyring-pam gocryptfs grim gvfs
-            jq
+            gcc gcc-c++ gdu git glow gnome-keyring gnome-keyring-pam gocryptfs grim gvfs
+            ImageMagick
+	    jq
             kde-cli-tools kernel-devel-matched kernel-headers
             libglvnd-devel libglvnd-glx libglvnd-opengl libvirt lxmenu-data
             make microcode_ctl
-            nano NetworkManager-tui ntfs-3g
+            nano NetworkManager-tui ntfs-3g net-tools
             papirus-icon-theme pavucontrol pciutils pipx pkgconfig poppler power-profiles-daemon python3-pip polkit-gnome
             ripgrep rofi rsync
             slurp stow sudo systemd-udev
-            tar tealdeer tesseract tesseract-langpack-eng topgrade
+            tar tealdeer tesseract tesseract-langpack-eng tmux topgrade tree 
             vim virt-install virt-manager virt-viewer
             unzip usbutils
             wget wget2-wget
@@ -402,7 +403,8 @@ install_apps() {
         com.bitwarden.desktop
         org.kde.drawy
         io.ente.auth
-        org.onlyoffice.desktopeditors
+        org.localsend.localsend_app
+	org.onlyoffice.desktopeditors
 	com.rtosta.zapzap
     )
 
