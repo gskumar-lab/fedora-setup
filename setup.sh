@@ -285,7 +285,7 @@ install_core_tools() {
 	    jq
             kde-cli-tools kernel-devel-matched kernel-headers
             libglvnd-devel libglvnd-glx libglvnd-opengl libvirt lxmenu-data
-            make microcode_ctl
+            make mediainfo microcode_ctl
             nano NetworkManager-tui ntfs-3g net-tools
             papirus-icon-theme pavucontrol pciutils pipx pkgconfig poppler power-profiles-daemon python3-pip polkit-gnome
             ripgrep rofi rsync
