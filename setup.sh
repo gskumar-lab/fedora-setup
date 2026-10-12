@@ -229,7 +229,7 @@ setup_flatpak() {
   echo -e "${CYAN}=== Setting up Flatpak ===${NC}"
   if ask "Install Flatpak and add Flathub remote?" "Y"; then
     echo -e "${YELLOW}Installing Flatpak...${NC}"
-    dnf install -y flatpak
+    dnf install -y flatpak flatseal
 
     echo -e "${YELLOW}Adding Flathub repository...${NC}"
     # --if-not-exists prevents the command from failing if Flathub is already configured
@@ -240,6 +240,39 @@ setup_flatpak() {
     echo "Skipping Flatpak setup."
   fi
 }
+
+setup_cargo() {
+    echo "==> Setting up Rust and Cargo..."
+
+    # Identify the original user
+    local user="${SUDO_USER:-}"
+
+    local home
+    home=$(getent passwd "$user" | cut -d: -f6)
+
+    # Install rustup as the normal user if missing
+    if ! sudo -u "$user" test -x "$home/.cargo/bin/rustup"; then
+        sudo -u "$user" env HOME="$home" \
+            sh -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh &&
+                   sh /tmp/rustup-init.sh -y'
+        local status=$?
+        rm -f /tmp/rustup-init.sh
+        (( status == 0 )) || return 1
+    fi
+
+    # Ensure stable Rust is selected
+    sudo -u "$user" env HOME="$home" \
+        "$home/.cargo/bin/rustup" default stable || return 1
+
+    echo "==> Rust and Cargo installed for $user"
+    sudo -u "$user" env HOME="$home" \
+        "$home/.cargo/bin/rustc" --version
+    sudo -u "$user" env HOME="$home" \
+        "$home/.cargo/bin/cargo" --version
+
+    cargo install cargo-update
+}
+
 
 install_groups() {
   echo -e "${CYAN}=== Installing Package Groups ===${NC}"
@@ -279,10 +312,10 @@ install_core_tools() {
       7zip
       acpid adw-gtk3-theme amd-ucode-firmware aria2 ark
       bat bash-completion bibata-cursor-theme bind-utils btop btrfs-progs brightnessctl
-      calc clang cmake curl chrony
+      calc chrony clang cmake cronie curl  
       dbus dialog dosfstools dkms
       exfatprogs eza
-      fastfetch fd-find foot foot-terminfo fzf
+      fastfetch fd-find foot foot-terminfo fuzzel fzf
       gcc gcc-c++ gdu git glow gnome-keyring gnome-keyring-pam gocryptfs grim gvfs
       ImageMagick
       jq
@@ -290,13 +323,13 @@ install_core_tools() {
       libglvnd-devel libglvnd-glx libglvnd-opengl libvirt lxmenu-data
       make mediainfo microcode_ctl
       nano NetworkManager-tui ntfs-3g net-tools
-      papirus-icon-theme pavucontrol pciutils pipx pkgconfig poppler power-profiles-daemon python3-pip polkit-gnome
+      papirus-icon-theme pass pass-otp pavucontrol pciutils pipx pkgconf-pkg-config poppler power-profiles-daemon python3-pip polkit-gnome
       ripgrep rofi rsync
       slurp stow sudo systemd-udev
-      tar tealdeer tesseract tesseract-langpack-eng tmux topgrade tree
+      tar tealdeer tesseract tesseract-langpack-eng tmux topgrade trash-cli tree
       vim virt-install virt-manager virt-viewer
       unzip usbutils
-      wget wget2-wget
+      wget wget2-wget wtype
       xdg-user-dirs xorg-x11-server-Xwayland
       yazi yt-dlp
       zip zoxide
@@ -378,14 +411,15 @@ install_apps() {
 
   # PREFERRED APPS
   dnf_apps=(
+    betterbird
     easyeffects evince
     feh
-    galculator geany gnome-disk-utility gnome-software
+    galculator geany gnome-disk-utility gnome-sound-recorder gnome-software
     localsend
     mpv
     nwg-look
     qt5ct qt6ct
-    telegram-desktop
+    telegram-desktop torbrowser
     xarchiver
   )
 
@@ -506,6 +540,7 @@ choose_file_manager() {
 }
 
 install_optional_programs() {
+  setup_cargo
   echo -e "${CYAN}=== Installing Optional Programs ===${NC}"
 
   # Detect the real user so cargo binaries don't get stuck in /root/
@@ -533,6 +568,14 @@ install_optional_programs() {
     echo -e "${YELLOW}Note: Ensure ~/.cargo/bin is in your \$PATH (usually set in .bashrc)${NC}"
   fi
 
+  
+  # 3. cliamp
+  if ask "Install Cliamp ?" "N"; then
+    echo -e "${YELLOW}Setting up cliamp...${NC}"
+    sudo curl -fsSL https://cliamp.stream/install.sh | sh
+    echo -e "${GREEN}Climap installed ${NC}"
+  fi
+
   # 2. Add more optional programs here later...
   # if ask "Install Another Program?" "N"; then
   #     dnf install -y some-package
@@ -545,7 +588,7 @@ install_hyprland() {
   if ask "Install core Hyprland compositor and XDG portals?" "Y"; then
     echo "Installing core Hyprland..."
     dnf copr enable lionheartp/Hyprland -y
-    dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
+    dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk hyprshutdown
   fi
 
   echo "Configuring SELinux to Permissive mode..."
