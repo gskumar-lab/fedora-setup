@@ -588,7 +588,7 @@ install_hyprland() {
   if ask "Install core Hyprland compositor and XDG portals?" "Y"; then
     echo "Installing core Hyprland..."
     dnf copr enable lionheartp/Hyprland -y
-    dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk hyprshutdown
+    dnf install -y hyprland hyprland-guiutils xdg-desktop-portal-hyprland xdg-desktop-portal-gtk hyprshutdown lua
   fi
 
   echo "Configuring SELinux to Permissive mode..."
