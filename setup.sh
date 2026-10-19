@@ -320,7 +320,7 @@ install_core_tools() {
       ImageMagick
       jq
       kde-cli-tools kernel-devel-matched kernel-headers
-      libglvnd-devel libglvnd-glx libglvnd-opengl libvirt lxmenu-data
+      libglvnd-devel libglvnd-glx libglvnd-opengl libva-utils libvirt lxmenu-data
       make mediainfo microcode_ctl
       nano NetworkManager-tui ntfs-3g net-tools
       papirus-icon-theme pass pass-otp pavucontrol pciutils pipx pkgconf-pkg-config poppler power-profiles-daemon python3-pip polkit-gnome
@@ -364,7 +364,7 @@ install_gpu() {
   if ask "Install NVIDIA Drivers (Proprietary)? Requires RPM Fusion." "N"; then
     echo -e "${YELLOW}Installing NVIDIA packages...${NC}"
     # akmod-nvidia builds the kernel module automatically
-    if dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda; then
+    if dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda libva-nvidia-driver ; then
       echo -e "${GREEN}NVIDIA drivers installed successfully.${NC}"
       echo -e "${YELLOW}WARNING: You may need to wait a few minutes before rebooting so 'akmods' can build the kernel module in the background.${NC}"
       echo -e "${YELLOW}NOTE: For Hyprland, ensure 'nvidia-drm.modeset=1' is in your kernel parameters.${NC}"
